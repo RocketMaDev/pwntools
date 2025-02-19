@@ -9,9 +9,12 @@ The table below shows which release corresponds to each branch, and what date th
 
 | Version          | Branch   | Release Date           |
 | ---------------- | -------- | ---------------------- |
-| [4.14.0](#4140-dev)  | `dev`   |
-| [4.13.0](#4130-beta)  | `beta`    |
-| [4.12.0](#4120-stable)  | `stable`   | Feb 22, 2024
+| [5.0.0](#500-dev)  | `dev`    |
+| [4.15.0](#4150-beta)  | `beta`   |
+| [4.14.0](#4140-stable)  | `stable` | Jan 15, 2025
+| [4.13.1](#4131)  |          | Sep 29, 2024
+| [4.13.0](#4130)  |          | Aug 12, 2024
+| [4.12.0](#4120)  |          | Feb 22, 2024
 | [4.11.1](#4111)  |          | Nov 14, 2023
 | [4.11.0](#4110)  |          | Sep 15, 2023
 | [4.10.0](#4100)  |          | May 21, 2023
@@ -69,15 +72,138 @@ The table below shows which release corresponds to each branch, and what date th
 | [3.0.0](#300)    |          | Aug 20, 2016
 | [2.2.0](#220)    |          | Jan 5, 2015
 
-## 4.14.0 (`dev`)
+## 5.0.0 (`dev`)
+
+- [#2519][2519] Drop Python 2.7 support / Require Python 3.10
+- [#2507][2507] Add `+LINUX` and `+WINDOWS` doctest options and start proper testing on Windows
+- [#2522][2522] Support starting a kitty debugging window with the 'kitten' command
+- [#2524][2524] Raise EOFError during `process.recv` when stdout closes on Windows
+- [#2526][2526] Properly make use of extra arguments in `packing` utilities. `sign` parameter requires keyword syntax to specify it.
+- [#2517][2517] Allow to passthru kwargs on `ssh.__getattr__` convenience function to fix SSH motd problems
+- [#2527][2527] Allow setting debugger path via `context.gdb_binary`
+- [#2530][2530] Do NOT error when passing directory arguments in `checksec` commandline tool.
+- [#2529][2529] Add LoongArch64 support
+- [#2506][2506] ROP: fix `ROP(ELF(exe)).leave` is `None` in some ELF
+- [#2504][2504] doc: add example case for `tuple` (host, port pair) in `gdb.attach`
+
+[2519]: https://github.com/Gallopsled/pwntools/pull/2519
+[2507]: https://github.com/Gallopsled/pwntools/pull/2507
+[2522]: https://github.com/Gallopsled/pwntools/pull/2522
+[2524]: https://github.com/Gallopsled/pwntools/pull/2524
+[2526]: https://github.com/Gallopsled/pwntools/pull/2526
+[2517]: https://github.com/Gallopsled/pwntools/pull/2517
+[2527]: https://github.com/Gallopsled/pwntools/pull/2527
+[2530]: https://github.com/Gallopsled/pwntools/pull/2530
+[2529]: https://github.com/Gallopsled/pwntools/pull/2529
+[2506]: https://github.com/Gallopsled/pwntools/pull/2506
+[2504]: https://github.com/Gallopsled/pwntools/pull/2504
+
+## 4.15.0 (`beta`)
+
+- [#2508][2508] Ignore a warning when compiling with asm on nix
+- [#2471][2471] Properly close spawned kitty window
+- [#2358][2358] Cache output of `asm()`
+- [#2457][2457] Catch exception of non-ELF files in checksec.
+- [#2444][2444] Add `ELF.close()` to release resources
+- [#2413][2413] libcdb: improve the search speed of `search_by_symbol_offsets` in local libc-database
+- [#2470][2470] Fix waiting for gdb under WSL2
+- [#2479][2479] Support extracting libraries from Docker image in `pwn template`
+- [#2483][2483] Only print `checksec` output of `ELF.libc` when it was printed for the `ELF` already
+- [#2482][2482] Throw error when using `sni` and setting `server_hostname` manually in `remote`
+- [#2478][2478] libcdb-cli: add `--offline-only`, refactor unstrip and add fetch parser for download libc-database
+- [#2484][2484] Allow to disable caching
+- [#2291][2291] Fix attaching to a gdbserver with tuple `gdb.attach(('0.0.0.0',12345))`
+- [#2410][2410] Add `tube.upload_manually` to upload files in chunks
+- [#2502][2502] Fix loading ELF files without valid .dynamic section
+- [#2476][2476] Deprecate 'keepends' argument in favor of 'drop' in `tube.recvline*`
+- [#2364][2364] Deprecate direct commandline scripts invocation and exclude nonsense ones
+
+[2508]: https://github.com/Gallopsled/pwntools/pull/2508
+[2471]: https://github.com/Gallopsled/pwntools/pull/2471
+[2358]: https://github.com/Gallopsled/pwntools/pull/2358
+[2457]: https://github.com/Gallopsled/pwntools/pull/2457
+[2444]: https://github.com/Gallopsled/pwntools/pull/2444
+[2413]: https://github.com/Gallopsled/pwntools/pull/2413
+[2470]: https://github.com/Gallopsled/pwntools/pull/2470
+[2479]: https://github.com/Gallopsled/pwntools/pull/2479
+[2483]: https://github.com/Gallopsled/pwntools/pull/2483
+[2482]: https://github.com/Gallopsled/pwntools/pull/2482
+[2478]: https://github.com/Gallopsled/pwntools/pull/2478
+[2484]: https://github.com/Gallopsled/pwntools/pull/2484
+[2291]: https://github.com/Gallopsled/pwntools/pull/2291
+[2410]: https://github.com/Gallopsled/pwntools/pull/2410
+[2502]: https://github.com/Gallopsled/pwntools/pull/2502
+[2476]: https://github.com/Gallopsled/pwntools/pull/2476
+[2364]: https://github.com/Gallopsled/pwntools/pull/2364
+
+## 4.14.1
+
+- [#2533][2533] Fix installation on Python 3.5 and lower
+- [#2518][2518] fix: update apport coredump path handling for CorefileFinder
+
+[2533]: https://github.com/Gallopsled/pwntools/pull/2533
+[2518]: https://github.com/Gallopsled/pwntools/pull/2518
+
+## 4.14.0 (`stable`)
 
 - [#2356][2356] Add local libc database provider for libcdb
+- [#2360][2360] Add offline parameter for `search_by_hash` series function
+- [#2388][2388] libcdb: add `offline_only` to `search_by_symbol_offsets`
 - [#2374][2374] libcdb.unstrip_libc: debug symbols are fetched only if not present
+- [#2327][2327] Add basic support to debug processes on Windows
+- [#2437][2437] Support asm/disasm on Windows
+- [#2330][2330] Change `context.newline` when setting `context.os` to `"windows"`
+- [#2322][2322] Add basic RISCV64 shellcraft support
+- [#2376][2376] Return buffered data on first EOF in tube.readline()
+- [#2371][2371] Add functions for retrieving process mappings
+- [#2398][2398] Add support for generating multiple shellcodes at a time in shellcraft
+- [#2389][2389] Fix passing bytes to `context.log_file` and `crc.BitPolynom`
+- [#2391][2391] Fix error message when passing invalid kwargs to `xor`
+- [#2387][2387] Convert apport_corefile() output from bytes-like object to string
+- [#2415][2415] Add shellcraft template for IPv6 socket
+- [#2405][2405] Add "none" ssh authentication method
+- [#2427][2427] Document behaviour of remote()'s sni argument as string.
+- [#2382][2382] added optional port, gdb_args and gdbserver_args parameters to gdb.debug()
+- [#2435][2435] Speed up gdbserver handshake in gdb.debug()
+- [#2436][2436] Add resolution_addr parameter to Ret2dlresolvePayload
+- [#2497][2497] Fix remote.fromsocket() to handle AF_INET6 socket
 
+[2436]: https://github.com/Gallopsled/pwntools/pull/2436
+[2371]: https://github.com/Gallopsled/pwntools/pull/2371
+[2360]: https://github.com/Gallopsled/pwntools/pull/2360
 [2356]: https://github.com/Gallopsled/pwntools/pull/2356
 [2374]: https://github.com/Gallopsled/pwntools/pull/2374
+[2327]: https://github.com/Gallopsled/pwntools/pull/2327
+[2322]: https://github.com/Gallopsled/pwntools/pull/2322
+[2330]: https://github.com/Gallopsled/pwntools/pull/2330
+[2389]: https://github.com/Gallopsled/pwntools/pull/2389
+[2391]: https://github.com/Gallopsled/pwntools/pull/2391
+[2376]: https://github.com/Gallopsled/pwntools/pull/2376
+[2387]: https://github.com/Gallopsled/pwntools/pull/2387
+[2388]: https://github.com/Gallopsled/pwntools/pull/2388
+[2398]: https://github.com/Gallopsled/pwntools/pull/2398
+[2415]: https://github.com/Gallopsled/pwntools/pull/2415
+[2405]: https://github.com/Gallopsled/pwntools/pull/2405
+[2427]: https://github.com/Gallopsled/pwntools/pull/2405
+[2382]: https://github.com/Gallopsled/pwntools/pull/2382
+[2435]: https://github.com/Gallopsled/pwntools/pull/2435
+[2437]: https://github.com/Gallopsled/pwntools/pull/2437
+[2497]: https://github.com/Gallopsled/pwntools/pull/2497
 
-## 4.13.0 (`beta`)
+## 4.13.1
+
+- [#2445][2445] Fix parsing the PLT on Windows
+- [#2466][2466] Fix PLT emulation with Unicorn 2.1.0
+- [#2466][2466] Switch to PyPi Simple API for update checks
+- [#2467][2467] Fix loading at all on Windows
+- [#2469][2469] GDB 15+ rpyc detection
+
+[2445]: https://github.com/Gallopsled/pwntools/pull/2445
+[2466]: https://github.com/Gallopsled/pwntools/pull/2466
+[2467]: https://github.com/Gallopsled/pwntools/pull/2467
+[2469]: https://github.com/Gallopsled/pwntools/pull/2469
+
+## 4.13.0
 
 - [#2242][2242] Term module revamp: activating special handling of terminal only when necessary
 - [#2277][2277] elf: Resolve more relocations into GOT entries
@@ -89,7 +215,7 @@ The table below shows which release corresponds to each branch, and what date th
 - [#2308][2308] Fix WinExec shellcraft to make sure it's 16 byte aligned
 - [#2279][2279] Make `pwn template` always set context.binary
 - [#2310][2310] Add support to start a process on Windows
-- [#2335][2335] Add lookup optimizations in DynELF 
+- [#2335][2335] Add lookup optimizations in DynELF
 - [#2334][2334] Speed up disasm commandline tool with colored output
 - [#2328][2328] Lookup using $PATHEXT file extensions in `which` on Windows
 - [#2189][2189] Explicitly define p64/u64 functions for IDE support
@@ -107,6 +233,8 @@ The table below shows which release corresponds to each branch, and what date th
 - [#2268][2268] Add a `flatten` argument to `ssh.libs`
 - [#2347][2347] Fix/workaround Unicorn Engine 1GB limit that calls exit()
 - [#2233][2233] Fix gdb.debug: exe parameter now respected, allow empty argv
+- [#2373][2373] Fix displaying bright color variation in terminal output
+- [#2378][2378] Don't go though a shell in `gdb.debug`
 
 [2242]: https://github.com/Gallopsled/pwntools/pull/2242
 [2277]: https://github.com/Gallopsled/pwntools/pull/2277
@@ -133,8 +261,10 @@ The table below shows which release corresponds to each branch, and what date th
 [2268]: https://github.com/Gallopsled/pwntools/pull/2268
 [2347]: https://github.com/Gallopsled/pwntools/pull/2347
 [2233]: https://github.com/Gallopsled/pwntools/pull/2233
+[2373]: https://github.com/Gallopsled/pwntools/pull/2373
+[2378]: https://github.com/Gallopsled/pwntools/pull/2378
 
-## 4.12.0 (`stable`)
+## 4.12.0
 
 - [#2202][2202] Fix `remote` and `listen` in sagemath
 - [#2117][2117] Add -p (--prefix) and -s (--separator) arguments to `hex` command
@@ -172,7 +302,7 @@ The table below shows which release corresponds to each branch, and what date th
 
 ## 4.11.0
 
-- [#2185][2185] make fmtstr module able to create payload without $ notation 
+- [#2185][2185] make fmtstr module able to create payload without $ notation
 - [#2103][2103] Add search for libc binary by leaked function addresses `libcdb.search_by_symbol_offsets()`
 - [#2177][2177] Support for RISC-V 64-bit architecture
 - [#2186][2186] Enhance `ELF.nx` and `ELF.execstack`

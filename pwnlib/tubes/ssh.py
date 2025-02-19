@@ -450,7 +450,7 @@ class ssh_connecter(sock):
             try:
                 self.sock = parent.transport.open_channel('direct-tcpip', (host, port), ('127.0.0.1', 0))
             except Exception as e:
-                self.exception(e.message)
+                self.exception(str(e))
                 raise
 
             try:
@@ -544,24 +544,37 @@ class ssh(Timeout, Logger):
     #: Remote port (``int``)
     port = None
 
+    #: Remote username (``str``)
+    user = None
+
+    #: Remote password (``str``)
+    password = None
+
+    #: Remote private key (``str``)
+    key = None
+
+    #: Remote private key file (``str``)
+    keyfile = None
+
     #: Enable caching of SSH downloads (``bool``)
     cache = True
 
+    #: Enable raw mode and don't probe the environment (``bool``)
+    raw = False
+
     #: Paramiko SSHClient which backs this object
     client = None
-
-    #: Paramiko SFTPClient object which is used for file transfers.
-    #: Set to :const:`None` to disable ``sftp``.
-    sftp = None
 
     #: PID of the remote ``sshd`` process servicing this connection.
     pid = None
 
     _cwd = '.'
+    _tried_sftp = False
 
     def __init__(self, user=None, host=None, port=22, password=None, key=None,
                  keyfile=None, proxy_command=None, proxy_sock=None, level=None,
-                 cache=True, ssh_agent=False, ignore_config=False, raw=False, *a, **kw):
+                 cache=True, ssh_agent=False, ignore_config=False, raw=False, 
+                 auth_none=False, *a, **kw):
         """Creates a new ssh connection.
 
         Arguments:
@@ -575,10 +588,11 @@ class ssh(Timeout, Logger):
             proxy_sock(str): Use this socket instead of connecting to the host.
             timeout: Timeout, in seconds
             level: Log level
-            cache: Cache downloaded files (by hash/size/timestamp)
-            ssh_agent: If :const:`True`, enable usage of keys via ssh-agent
-            ignore_config: If :const:`True`, disable usage of ~/.ssh/config and ~/.ssh/authorized_keys
-            raw: If :const:`True`, assume a non-standard shell and don't probe the environment
+            cache(bool): Cache downloaded files (by hash/size/timestamp)
+            ssh_agent(bool): If :const:`True`, enable usage of keys via ssh-agent
+            ignore_config(bool): If :const:`True`, disable usage of ~/.ssh/config and ~/.ssh/authorized_keys
+            raw(bool): If :const:`True`, assume a non-standard shell and don't probe the environment
+            auth_none(bool): If :const:`True`, try to authenticate with no authentication methods
 
         NOTE: The proxy_command and proxy_sock arguments is only available if a
         fairly new version of paramiko is used.
@@ -674,6 +688,11 @@ class ssh(Timeout, Logger):
                            "    To remove the existing entry from your known_hosts and trust the new key, run the following commands:\n"
                            "        $ ssh-keygen -R %(host)s\n"
                            "        $ ssh-keygen -R [%(host)s]:%(port)s" % locals())
+            except paramiko.SSHException as e:
+                if user and auth_none and str(e) == "No authentication methods available":
+                    self.client.get_transport().auth_none(user)
+                else:
+                    raise
 
             self.transport = self.client.get_transport()
             self.transport.use_compression(True)
@@ -687,7 +706,7 @@ class ssh(Timeout, Logger):
 
         if self.sftp:
             with context.quiet:
-                self.cwd = packing._decode(self.pwd())
+                self.cwd = packing._decode(self.pwd(tty=False))
         else:
             self.cwd = '.'
 
@@ -719,6 +738,9 @@ class ssh(Timeout, Logger):
 
     @property
     def sftp(self):
+        """Paramiko SFTPClient object which is used for file transfers.
+        Set to :const:`None` to disable ``sftp``.
+        """
         if not self._tried_sftp:
             try:
                 self._sftp = self.transport.open_sftp_client()
@@ -1118,7 +1140,7 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
                 cwd = wd
 
         with context.local(log_level = 'ERROR'):
-            c = self.run(process, tty, cwd = cwd, env = env, timeout = Timeout.default)
+            c = self.system(process, tty, cwd = cwd, env = env, timeout = Timeout.default)
             data = c.recvall()
             retcode = c.wait()
             c.close()
@@ -1181,7 +1203,7 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
             >>> print(repr(s['echo hello']))
             b'hello'
         """
-        return self.run(attr).recvall().strip()
+        return self.system(attr).recvall().strip()
 
     def __call__(self, attr):
         """Permits function-style access to run commands over SSH
@@ -1192,10 +1214,12 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
             >>> print(repr(s('echo hello')))
             b'hello'
         """
-        return self.run(attr).recvall().strip()
+        return self.system(attr).recvall().strip()
 
     def __getattr__(self, attr):
-        """Permits member access to run commands over SSH
+        """Permits member access to run commands over SSH.
+
+        Supports other keyword arguments which are passed to :meth:`.system`.
 
         Examples:
 
@@ -1206,6 +1230,8 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
             b'travis'
             >>> s.echo(['huh','yay','args'])
             b'huh yay args'
+            >>> s.echo('value: $MYENV', env={'MYENV':'the env'})
+            b'value: the env'
         """
         bad_attrs = [
             'trait_names',          # ipython tab-complete
@@ -1217,7 +1243,7 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
             raise AttributeError
 
         @LocalContext
-        def runner(*args):
+        def runner(*args, **kwargs):
             if len(args) == 1 and isinstance(args[0], (list, tuple)):
                 command = [attr]
                 command.extend(args[0])
@@ -1226,7 +1252,7 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
                 command.extend(args)
                 command = b' '.join(packing._need_bytes(arg, min_wrong=0x80) for arg in command)
 
-            return self.run(command).recvall().strip()
+            return self.system(command, **kwargs).recvall().strip()
         return runner
 
     def connected(self):
@@ -1326,7 +1352,7 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
 
         with context.local(log_level = 'ERROR'):
             cmd = 'cat < ' + sh_string(remote)
-            c = self.run(cmd)
+            c = self.system(cmd)
         data = b''
 
         while True:
@@ -1347,7 +1373,7 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
     def _download_to_cache(self, remote, p, fingerprint=True):
 
         with context.local(log_level='error'):
-            remote = self.readlink('-f',remote)
+            remote = self.readlink('-f', remote, tty=False)
         if not hasattr(remote, 'encode'):
             remote = remote.decode('utf-8')
 
@@ -1512,7 +1538,7 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
 
         with context.local(log_level = 'ERROR'):
             cmd = 'cat > ' + sh_string(remote)
-            s = self.run(cmd, tty=False)
+            s = self.system(cmd, tty=False)
             s.send(data)
             s.shutdown('send')
             data   = s.recvall()
@@ -1570,7 +1596,7 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
                 remote_tar = self.mktemp('--suffix=.tar.gz')
                 self.upload_file(local_tar, remote_tar)
 
-                untar = self.run(b'cd %s && tar -xzf %s' % (sh_string(remote), sh_string(remote_tar)))
+                untar = self.system(b'cd %s && tar -xzf %s' % (sh_string(remote), sh_string(remote_tar)))
                 message = untar.recvrepeat(2)
 
                 if untar.wait() != 0:
@@ -2030,7 +2056,7 @@ from ctypes import *; libc = CDLL('libc.so.6'); print(libc.getenv(%r))
         Example:
 
             >>> s = ssh("travis", "example.pwnme")
-            >>> s.user_shstk
+            >>> s.user_shstk # doctest: +SKIP 
             False
         """
         if self._user_shstk is None:

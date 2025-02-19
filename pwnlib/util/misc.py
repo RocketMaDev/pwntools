@@ -1,5 +1,6 @@
 from __future__ import division
 
+import json
 import base64
 import errno
 import os
@@ -13,11 +14,13 @@ import subprocess
 import sys
 import tempfile
 import inspect
+import time
 import types
 
 from pwnlib import atexit
 from pwnlib.context import context
 from pwnlib.log import getLogger
+from pwnlib.timeout import Timeout
 from pwnlib.util import fiddling
 from pwnlib.util import lists
 from pwnlib.util import packing
@@ -121,7 +124,7 @@ def read(path, count=-1, skip=0):
 
     Examples:
 
-        >>> read('/proc/self/exe')[:4]
+        >>> read('/proc/self/exe')[:4] # doctest: +LINUX +TODO
         b'\x7fELF'
     """
     path = os.path.expanduser(os.path.expandvars(path))
@@ -161,7 +164,7 @@ def which(name, all = False, path=None):
 
     Example:
 
-        >>> which('sh') # doctest: +ELLIPSIS
+        >>> which('sh') # doctest: +ELLIPSIS +POSIX +TODO
         '.../bin/sh'
     """
     # If name is a path, do not attempt to resolve it.
@@ -368,13 +371,13 @@ def run_in_new_terminal(command, terminal=None, args=None, kill_at_exit=True, pr
                 terminal    = 'cmd.exe'
                 args        = ['/c', 'start']
                 distro_name = os.getenv('WSL_DISTRO_NAME')
+                current_dir = os.getcwd()
 
                 # Split pane in Windows Terminal
                 if 'WT_SESSION' in os.environ and which('wt.exe'):
-                    args.extend(['wt.exe', '-w', '0', 'split-pane', '-d', '.'])
-
+                    args.extend(['wt.exe', '-w', '0', 'split-pane'])
                 if distro_name:
-                    args.extend(['wsl.exe', '-d', distro_name, 'bash', '-c'])
+                    args.extend(['wsl.exe', '-d', distro_name, '--cd', current_dir, 'bash', '-c'])
                 else:
                     args.extend(['bash.exe', '-c'])
 
@@ -439,11 +442,16 @@ end tell
             tmp.flush()
             os.chmod(tmp.name, 0o700)
             argv = [which(terminal), tmp.name]
+    # cmd.exe does not support WSL UNC paths as working directory
+    # so it gets reset to %WINDIR% before starting wsl again.
+    # Set the working directory correctly in WSL.
+    elif terminal == 'cmd.exe':
+        argv[-1] = "cd '{}' && {}".format(os.getcwd(), argv[-1])
 
     log.debug("Launching a new terminal: %r" % argv)
 
     stdin = stdout = stderr = open(os.devnull, 'r+b')
-    if terminal == 'tmux':
+    if terminal == 'tmux' or terminal in ('kitty', 'kitten'):
         stdout = subprocess.PIPE
 
     p = subprocess.Popen(argv, stdin=stdin, stdout=stdout, stderr=stderr, preexec_fn=preexec_fn)
@@ -460,10 +468,44 @@ end tell
         with subprocess.Popen((qdbus, konsole_dbus_service, '/Sessions/{}'.format(last_konsole_session),
                                'org.kde.konsole.Session.processId'), stdout=subprocess.PIPE) as proc:
             pid = int(proc.communicate()[0].decode())
+    elif terminal in ('kitty', 'kitten'):
+        pid = None
+        out, _ = p.communicate()
+        try:
+            kittyid = int(out)
+        except ValueError:
+            kittyid = None
+        if kittyid is None:
+            log.error("Could not parse kitty window ID from output (%r)", out)
+        else:
+            lsout, _ = subprocess.Popen(["kitten", "@", "ls", "--match", "id:%d" % kittyid], stdin=stdin, stdout=stdout, stderr=stderr).communicate()
+            try:
+                lsj = json.loads(lsout)
+                pid = int(lsj[0]["tabs"][0]["windows"][0]["pid"])
+            except json.JSONDecodeError as e:
+                pid = None
+                log.error("Json decode failed while parsing 'kitten @ ls' output (%r) (error: %r)", lsout, e)
+            
+    elif terminal == 'cmd.exe':
+        # p.pid is cmd.exe's pid instead of the WSL process we want to start eventually.
+        # I don't know how to trace the execution through Windows and back into the WSL2 VM.
+        # Do a best guess by waiting for a new process matching the command to be run.
+        # Otherwise it's better to return nothing instead of a know wrong pid.
+        from pwnlib.util.proc import pid_by_name
+        pid = None
+        ran_program = command.split(' ')[0] if isinstance(command, six.string_types) else command[0]
+        t = Timeout()
+        with t.countdown(timeout=5):
+            while t.timeout:
+                new_pid = pid_by_name(ran_program)
+                if new_pid and new_pid[0] > p.pid:
+                    pid = new_pid[0]
+                    break
+                time.sleep(0.01)
     else:
         pid = p.pid
 
-    if kill_at_exit:
+    if kill_at_exit and pid:
         def kill():
             try:
                 if terminal == 'qdbus':
